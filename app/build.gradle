@@ -32,7 +32,19 @@ dependencies {
     implementation "androidx.constraintlayout:constraintlayout:1.1.3"
     testImplementation "junit:junit:4.12"
 
+    def rxJavaVersion = "2.2.13"
+    def rxAndroidVersion = "2.1.1"
+    def rxKotlinVersion = "2.4.0"
     def retrofitVersion = "2.6.2"
+
+    // Core RxJava library
+    implementation "io.reactivex.rxjava2:rxjava:$rxJavaVersion"
+    // Adds scheduler for Android main thread
+    implementation "io.reactivex.rxjava2:rxandroid:$rxAndroidVersion"
+    // Adds extension functions to make it easier to use in Kotlin
+    implementation "io.reactivex.rxjava2:rxkotlin:$rxKotlinVersion"
+
+    implementation "com.squareup.retrofit2:adapter-rxjava2:$retrofitVersion"
 
     implementation "com.squareup.retrofit2:retrofit:$retrofitVersion"
     implementation "com.squareup.retrofit2:converter-gson:$retrofitVersion"

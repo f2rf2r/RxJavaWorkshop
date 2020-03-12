@@ -5,14 +5,17 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.rxkotlin.plusAssign
+import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.schedulers.Schedulers
 
 class MainActivity : AppCompatActivity() {
 
     private val TAG = MainActivity::class.simpleName!!
-    private var call: Call<AlertResponse>? = null
+    private val compositeDisposable = CompositeDisposable()
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,31 +25,29 @@ class MainActivity : AppCompatActivity() {
         val textView: TextView = findViewById(R.id.textview)
         val restApi = createRestApi()
 
-        textView.text = "Getting Alerts"
+        compositeDisposable += Observable.just("Getting Alerts")
+            .subscribeBy { textView.text = it }
 
-        call = restApi.getAlerts()
-        call?.enqueue(object : Callback<AlertResponse> {
-            override fun onResponse(call: Call<AlertResponse>, response: Response<AlertResponse>) {
-                val alertResponse = response.body()
-                if (response.isSuccessful && alertResponse != null) {
-                    var alertText = ""
-                    alertResponse.data.forEach { alert ->
-                        if (alert.severity > 5) {
-                            alertText = alertText + alert.message + "\n\n"
-                        }
-                    }
-                    textView.text = alertText
-                }
-            }
-
-            override fun onFailure(call: Call<AlertResponse>, error: Throwable) {
-                Log.w(TAG, "Error getting alerts", error)
-            }
-        })
+        compositeDisposable += restApi.getAlerts()
+            .map { it.data }
+            .flatMap { Observable.fromIterable(it) }
+            .filter { it.severity > 5 }
+            .map { it.message + "\n\n" }
+            .reduce("", { prev, current ->
+                prev + current
+            })
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeBy(
+                onSuccess = {
+                    textView.text = it
+                }, onError = {
+                    Log.w(TAG, "Error getting alerts", it)
+                })
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        call?.cancel()
+        compositeDisposable.clear()
     }
 }
